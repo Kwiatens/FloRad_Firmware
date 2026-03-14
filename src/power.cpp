@@ -8,7 +8,7 @@
 //
 // NOTE: Adjusted to 2.874f to compensate for voltage sag caused by 
 // high impedance (1M/3M) resistors loading the ADC.
-const float VOLTAGE_DIVIDER_RATIO = 2.874f;
+const float VOLTAGE_DIVIDER_RATIO = 3.021f;
 const float REF_VOLTAGE = 3.3;
 
 void Power::begin() {

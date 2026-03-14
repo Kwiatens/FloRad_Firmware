@@ -50,6 +50,16 @@ void loadSettings() {
     led.setEnabled(settings.ledEnabled);
 }
 
+// Helper to calculate Li-Ion SoC using an S-curve approximation
+float calculateBatteryPercentage(float voltage) {
+    // Constrain to standard 14500/AA Li-Ion limits
+    float v_clamped = constrain(voltage, 3.4f, 4.2f);
+    // Normalize voltage between 0.0 and 1.0
+    float x = (v_clamped - 3.4f) / (4.2f - 3.4f);
+    // Map to an S-Curve using cosine to match the typical Li-Ion discharge plateau
+    return 0.5f - 0.5f * cos(x * PI);
+}
+
 void setup() {
   // USB Re-enum (Keep this as it helps with flashing)
   pinMode(PA12, OUTPUT);
@@ -126,6 +136,7 @@ void loop() {
       static unsigned long lastAlternate = 0;
       static bool alternateDisplay = false;
       static float filteredHours = -1.0f; // Initialize as negative to seed first value
+      
       if (millis() - lastDraw > 200) {
         lastDraw = millis();
         if (millis() - lastAlternate > 2000) { // Alternate every 2 seconds
@@ -133,22 +144,26 @@ void loop() {
             alternateDisplay = !alternateDisplay;
         }
         
-        // Calculate Remaining Time
         float v = power.getBatteryVoltage();
-        float pct = (v - 3.4f) / (4.2f - 3.4f); // Linear map 3.4V(0%) to 4.2V(100%)
-        if (pct < 0) pct = 0;
-        if (pct > 1.0f) pct = 1.0f;
+        float remainingHours = -1.0f; // Use -1.0 to flag "Wait/Calc" status
         
-        float currentMa = isBacklightActive ? 38.7f : 36.0f;
-        float remainingHours = (settings.batteryCapacity * pct) / currentMa;
+        // Let voltage settle for 1 minute (60,000 ms)
+        if (millis() > 60000) {
+            float pct = calculateBatteryPercentage(v);
+            float currentMa = isBacklightActive ? 38.7f : 36.0f;
+            remainingHours = (settings.batteryCapacity * pct) / currentMa;
 
-        // Filter the remaining time to prevent "jumping minutes"
-        if (filteredHours < 0) filteredHours = remainingHours; // Seed filter
-        else filteredHours = (filteredHours * 0.98f) + (remainingHours * 0.02f); // Strong filter
+            // Filter the remaining time to prevent "jumping minutes"
+            if (filteredHours < 0) filteredHours = remainingHours; // Seed filter
+            else filteredHours = (filteredHours * 0.98f) + (remainingHours * 0.02f); // Strong filter
+        } else {
+            filteredHours = -1.0f; // Reset filter if we're in the settling period
+        }
 
         displayMgr.updateMainScreen(geiger.getCPM(), geiger.getuSv(), v, power.isCharging(), filteredHours, settings, geiger.isTickerEnabled(), geiger.getHistory(), geiger.getHistoryIndex(), alternateDisplay);
       }
   }
+
   else if (currentState == STATE_MENU_ROOT) {
       if (evt == EVT_BTN_A_SHORT) menuIndex = (menuIndex + 1) % 4; // 4 items now
       else if (evt == EVT_BTN_B_SHORT) {
@@ -254,10 +269,16 @@ void loop() {
           menuIndex = 2;
           sysInfoScroll = 0; // Reset scroll on exit
       }
+      
       float v = power.getBatteryVoltage();
-      float pct = (v - 3.4f) / (4.2f - 3.4f); if (pct < 0) pct = 0; if (pct > 1.0f) pct = 1.0f;
-      float currentMa = isBacklightActive ? 38.7f : 36.0f;
-      float remainingHours = (settings.batteryCapacity * pct) / currentMa;
+      float remainingHours = -1.0f;
+      
+      if (millis() > 60000) {
+          float pct = calculateBatteryPercentage(v);
+          float currentMa = isBacklightActive ? 38.7f : 36.0f;
+          remainingHours = (settings.batteryCapacity * pct) / currentMa;
+      }
+      
       displayMgr.drawSystemInfo("v1.4", millis()/1000, geiger.getTotalPulses(), v, remainingHours, sysInfoScroll);
   }
   else if (currentState == STATE_EDIT_COUNT_UNIT) {

@@ -112,13 +112,19 @@ void DisplayManager::updateMainScreen(int cpm, float usv, float voltage, bool ch
         } else if (shouldShowRuntime) {
             lcd.setCursor(26, 0); // Moved left to fit label "T:"
             lcd.print("T:");
-            int h = (int)remainingHours;
-            int m = (int)((remainingHours - h) * 60);
-            if(h > 99) h = 99;
-            lcd.print(h);
-            lcd.print(":");
-            if(m < 10) lcd.print("0");
-            lcd.print(m);
+            
+            if (remainingHours < 0) {
+                // Showing Wait during the 1-minute settling period
+                lcd.print("Wait");
+            } else {
+                int h = (int)remainingHours;
+                int m = (int)((remainingHours - h) * 60);
+                if(h > 99) h = 99;
+                lcd.print(h);
+                lcd.print(":");
+                if(m < 10) lcd.print("0");
+                lcd.print(m);
+            }
         }
     }
     lcd.drawLine(0, 8, 84, 8, BLACK);
@@ -330,9 +336,13 @@ void DisplayManager::drawSystemInfo(const char* fw_ver, uint32_t uptime_s, uint3
     snprintf(lineBuffer[4], 22, "Counts: %lu", total_counts);
     snprintf(lineBuffer[5], 22, "Batt V: %.2fV", voltage);
 
-    int hours = (int)remainingHours;
-    int minutes = (int)((remainingHours - hours) * 60);
-    snprintf(lineBuffer[6], 22, "Est Time: %dh%02dm", hours, minutes);
+    if (remainingHours < 0) {
+        snprintf(lineBuffer[6], 22, "Est Time: Calc...");
+    } else {
+        int hours = (int)remainingHours;
+        int minutes = (int)((remainingHours - hours) * 60);
+        snprintf(lineBuffer[6], 22, "Est Time: %dh%02dm", hours, minutes);
+    }
 
     const int totalLines = 7;
     const int visibleLines = 3; // Reduced to 3 to prevent overlap with footer

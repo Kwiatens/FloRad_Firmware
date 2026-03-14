@@ -298,6 +298,6 @@ void loop() {
       displayMgr.drawOptionSelector("Dose Unit", doseUnitOptions, 2, menuIndex);
   }
 
-  // Final Power Optimization: Put the CPU to sleep until the next interrupt (Ticker or Timer)
+  // Put the CPU to sleep until the next interrupt (Ticker or Timer)
   __WFI(); 
 }

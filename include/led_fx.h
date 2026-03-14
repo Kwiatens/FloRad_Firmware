@@ -1,7 +1,7 @@
 #ifndef LED_FX_H
 #define LED_FX_H
 
-#include <Adafruit_NeoPixel.h>
+#include <Arduino.h>
 
 class LedFX {
 public:
@@ -16,17 +16,18 @@ public:
     void setEnabled(bool e);
 
 private:
-    // Animation State
+    void show(); // Internal helper to send data to the LED
+    
     enum AnimState { IDLE, BOOT, PULSE_FADE, STATIC };
 
-    Adafruit_NeoPixel strip;
     bool ledEnabled;
     uint8_t targetBrightness;
     AnimState state;
     unsigned long animStart;
-    uint8_t static_r;
-    uint8_t static_g;
-    uint8_t static_b;
+    
+    // Track current colors manually
+    uint8_t curr_r, curr_g, curr_b;
+    uint8_t static_r, static_g, static_b;
 };
 
 #endif
